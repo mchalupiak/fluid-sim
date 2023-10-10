@@ -4,7 +4,7 @@ const rg = @import("raygui");
 const math = std.math;
 
 const Width: i32 = 1200;
-const Height: i32 = @divTrunc(Width, 2);
+const Height: i32 = @divTrunc(Width * 3, 4);
 const HalfWidth: f32 = Width / 2;
 const HalfHeight: f32 = Height / 2;
 
@@ -48,7 +48,8 @@ fn init(particles: *std.ArrayList(Particle)) void {
     }
 }
 
-fn update(delta: f32, width: f32, height: f32, particles: *std.ArrayList(Particle), run: *bool, reset: *bool) void {
+fn update(width: f32, height: f32, particles: *std.ArrayList(Particle), run: *bool, reset: *bool) void {
+    const delta = rl.GetFrameTime();
     for (0..particles.items.len) |i| {
         if (run.*) {
             particles.items[i].velocity.y += gravity * delta;
@@ -71,9 +72,17 @@ fn resolveCollisions(particle: *Particle, width: f32, height: f32) void {
         particle.position.x = xbound * math.sign(particle.position.x);
         particle.velocity.x *= -1 * collisionDampener;
     }
+    if (@fabs(particle.position.x) < (Width - xbound)) {
+        particle.position.x = (Width - xbound) * math.sign(particle.position.x);
+        particle.velocity.x *= -1 * collisionDampener;
+    }
     const ybound = height - particleSize;
     if (@fabs(particle.position.y) > ybound) {
         particle.position.y = ybound * math.sign(particle.position.y);
+        particle.velocity.y *= -1 * collisionDampener;
+    }
+    if (@fabs(particle.position.y) < (Height - ybound)) {
+        particle.position.y = (Height - ybound) * math.sign(particle.position.y);
         particle.velocity.y *= -1 * collisionDampener;
     }
 }
@@ -90,36 +99,35 @@ pub fn main() !void {
     init(&particles);
     defer particles.deinit();
 
-    var screenWidth: f32 = Width;
-    var screenHeight: f32 = Height;
-
     var run = false;
     var reset = false;
-    var colBoxX: f32 = screenWidth;
-    var colBoxY: f32 = screenHeight;
+    var colBoxX: f32 = Width;
+    var colBoxY: f32 = Height;
+
     while (!rl.WindowShouldClose()) {
         rl.BeginDrawing();
         defer rl.EndDrawing();
-        screenWidth = @as(f32, @floatFromInt(rl.GetScreenWidth())) / 2;
-        screenHeight = @as(f32, @floatFromInt(rl.GetScreenHeight())) / 2;
         rl.ClearBackground(rl.RAYWHITE);
         rl.DrawFPS(10, 10);
-        var deltaTime = rl.GetFrameTime();
-        rl.DrawRectangleLines(@as(i32, @intFromFloat(screenWidth - colBoxX / 2)), @as(i32, @intFromFloat(screenHeight - colBoxY / 2)), @as(i32, @intFromFloat(colBoxX)), @as(i32, @intFromFloat(colBoxY)), rl.BLACK);
-        update(deltaTime, colBoxX + screenWidth - colBoxX / 2, colBoxY + screenHeight - colBoxY / 2, &particles, &run, &reset);
-        _ = rg.GuiSliderBar(.{ .x = xCol, .y = 20 + (uiHeight * 0), .width = uiWidth, .height = uiHeight }, "Bounding Box Width", "", &colBoxX, 0, screenWidth * 2);
-        _ = rg.GuiSliderBar(.{ .x = xCol, .y = 30 + (uiHeight * 1), .width = uiWidth, .height = uiHeight }, "Bounding Box Height", "", &colBoxY, 0, screenHeight * 2);
-        _ = rg.GuiSliderBar(.{ .x = xCol, .y = 40 + (uiHeight * 2), .width = uiWidth, .height = uiHeight }, "Spacing", "", &particleSpacing, 0, 100 * uiScale);
-        _ = rg.GuiSliderBar(.{ .x = xCol, .y = 50 + (uiHeight * 3), .width = uiWidth, .height = uiHeight }, "Size", "", &particleSize, 1, 350 * uiScale);
-        _ = rg.GuiSliderBar(.{ .x = xCol, .y = 60 + (uiHeight * 4), .width = uiWidth, .height = uiHeight }, "Quantity", "", &numParticles, 1, 1000);
-        _ = rg.GuiSliderBar(.{ .x = xCol, .y = 70 + (uiHeight * 5), .width = uiWidth, .height = uiHeight }, "Collision Dampening", "", &collisionDampener, 0, 1);
-        _ = rg.GuiCheckBox(.{ .x = xCol, .y = 80 + (uiHeight * 6), .width = uiBoxSize, .height = uiBoxSize }, "Run", &run);
-        _ = rg.GuiCheckBox(.{ .x = xCol, .y = 80 + (uiHeight * 7), .width = uiBoxSize, .height = uiBoxSize }, "Reset", &reset);
+        rl.DrawRectangleLines(@as(i32, @intFromFloat(HalfWidth - colBoxX / 2)), @as(i32, @intFromFloat(HalfHeight - colBoxY / 2)), @as(i32, @intFromFloat(colBoxX)), @as(i32, @intFromFloat(colBoxY)), rl.BLACK);
+        update(colBoxX + HalfWidth - colBoxX / 2, colBoxY + HalfHeight - colBoxY / 2, &particles, &run, &reset);
+        drawUI(&colBoxX, &colBoxY, &run, &reset);
         const msg = "Hello zig! You created your first window.";
-        rl.DrawText(msg, @as(i32, @intFromFloat(screenWidth)) - @as(i32, 5 * msg.len), @as(i32, @intFromFloat(screenHeight)) - 200, 20, rl.BLACK);
+        rl.DrawText(msg, HalfWidth - @as(i32, 5 * msg.len), HalfHeight - 200, 20, rl.BLACK);
         if (rl.IsKeyDown(.KEY_Q)) {
             break;
         }
     }
     std.debug.print("exiting...\n", .{});
+}
+
+fn drawUI(colBoxX: *f32, colBoxY: *f32, run: *bool, reset: *bool) void {
+    _ = rg.GuiSliderBar(.{ .x = xCol, .y = 20 + (uiHeight * 0), .width = uiWidth, .height = uiHeight }, "Bounding Box Width", "", colBoxX, 0, Width);
+    _ = rg.GuiSliderBar(.{ .x = xCol, .y = 30 + (uiHeight * 1), .width = uiWidth, .height = uiHeight }, "Bounding Box Height", "", colBoxY, 0, Height);
+    _ = rg.GuiSliderBar(.{ .x = xCol, .y = 40 + (uiHeight * 2), .width = uiWidth, .height = uiHeight }, "Spacing", "", &particleSpacing, 0, 100 * uiScale);
+    _ = rg.GuiSliderBar(.{ .x = xCol, .y = 50 + (uiHeight * 3), .width = uiWidth, .height = uiHeight }, "Size", "", &particleSize, 1, 350 * uiScale);
+    _ = rg.GuiSliderBar(.{ .x = xCol, .y = 60 + (uiHeight * 4), .width = uiWidth, .height = uiHeight }, "Quantity", "", &numParticles, 1, 1000);
+    _ = rg.GuiSliderBar(.{ .x = xCol, .y = 70 + (uiHeight * 5), .width = uiWidth, .height = uiHeight }, "Collision Dampening", "", &collisionDampener, 0, 1);
+    _ = rg.GuiCheckBox(.{ .x = xCol, .y = 80 + (uiHeight * 6), .width = uiBoxSize, .height = uiBoxSize }, "Run", run);
+    _ = rg.GuiCheckBox(.{ .x = xCol, .y = 80 + (uiHeight * 7), .width = uiBoxSize, .height = uiBoxSize }, "Reset", reset);
 }
