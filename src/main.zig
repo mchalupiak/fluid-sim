@@ -3,17 +3,23 @@ const rl = @import("raylib");
 const rg = @import("raygui");
 const math = std.math;
 
-const Width: i32 = 2400;
-const Height: i32 = 1200;
+const Width: i32 = 1200;
+const Height: i32 = @divTrunc(Width, 2);
 const HalfWidth: f32 = Width / 2;
 const HalfHeight: f32 = Height / 2;
 
-var gravity: f32 = 9.81 * 50;
+const uiScale: f32 = (@as(f32, @floatFromInt(Width)) / 2400.0);
+const uiWidth = 315 * uiScale;
+const uiHeight = 60 * uiScale;
+const uiBoxSize = 40 * uiScale;
+const xCol = Width - (uiWidth + (85 * uiScale));
 
-var collisionDampener: f32 = 0.75;
+const gravity: f32 = 9.81 * 50;
 
-var particleSize: f32 = 50;
-var particleSpacing: f32 = 3;
+var collisionDampener: f32 = 0.85;
+
+var particleSize: f32 = 50 * uiScale;
+var particleSpacing: f32 = 3 * uiScale;
 
 var numParticles: f32 = 30;
 
@@ -86,16 +92,11 @@ pub fn main() !void {
 
     var screenWidth: f32 = Width;
     var screenHeight: f32 = Height;
-    const uiScale = 3;
-    const uiWidth = 105 * uiScale;
-    const uiHeight = 20 * uiScale;
-    const uiBoxSize = 40;
-    const xCol = 2000;
 
     var run = false;
     var reset = false;
-    var collBoxX: f32 = screenWidth;
-    var collBoxY: f32 = screenHeight;
+    var colBoxX: f32 = screenWidth;
+    var colBoxY: f32 = screenHeight;
     while (!rl.WindowShouldClose()) {
         rl.BeginDrawing();
         defer rl.EndDrawing();
@@ -104,18 +105,18 @@ pub fn main() !void {
         rl.ClearBackground(rl.RAYWHITE);
         rl.DrawFPS(10, 10);
         var deltaTime = rl.GetFrameTime();
-        rl.DrawRectangleLines(@as(i32, @intFromFloat(screenWidth - collBoxX / 2)), @as(i32, @intFromFloat(screenHeight - collBoxY / 2)), @as(i32, @intFromFloat(collBoxX)), @as(i32, @intFromFloat(collBoxY)), rl.BLACK);
-        update(deltaTime, collBoxX + screenWidth - collBoxX / 2, collBoxY + screenHeight - collBoxY / 2, &particles, &run, &reset);
-        _ = rg.GuiSliderBar(.{ .x = xCol, .y = 20 + (uiHeight * 0), .width = uiWidth, .height = uiHeight }, "Bounding Box Width", "", &collBoxX, 0, screenWidth * 2);
-        _ = rg.GuiSliderBar(.{ .x = xCol, .y = 30 + (uiHeight * 1), .width = uiWidth, .height = uiHeight }, "Bounding Box Height", "", &collBoxY, 0, screenHeight * 2);
-        _ = rg.GuiSliderBar(.{ .x = xCol, .y = 40 + (uiHeight * 2), .width = uiWidth, .height = uiHeight }, "Spacing", "", &particleSpacing, 0, 100);
-        _ = rg.GuiSliderBar(.{ .x = xCol, .y = 50 + (uiHeight * 3), .width = uiWidth, .height = uiHeight }, "Size", "", &particleSize, 0, 350);
-        _ = rg.GuiSliderBar(.{ .x = xCol, .y = 60 + (uiHeight * 4), .width = uiWidth, .height = uiHeight }, "Quantity", "", &numParticles, 0, 1000);
+        rl.DrawRectangleLines(@as(i32, @intFromFloat(screenWidth - colBoxX / 2)), @as(i32, @intFromFloat(screenHeight - colBoxY / 2)), @as(i32, @intFromFloat(colBoxX)), @as(i32, @intFromFloat(colBoxY)), rl.BLACK);
+        update(deltaTime, colBoxX + screenWidth - colBoxX / 2, colBoxY + screenHeight - colBoxY / 2, &particles, &run, &reset);
+        _ = rg.GuiSliderBar(.{ .x = xCol, .y = 20 + (uiHeight * 0), .width = uiWidth, .height = uiHeight }, "Bounding Box Width", "", &colBoxX, 0, screenWidth * 2);
+        _ = rg.GuiSliderBar(.{ .x = xCol, .y = 30 + (uiHeight * 1), .width = uiWidth, .height = uiHeight }, "Bounding Box Height", "", &colBoxY, 0, screenHeight * 2);
+        _ = rg.GuiSliderBar(.{ .x = xCol, .y = 40 + (uiHeight * 2), .width = uiWidth, .height = uiHeight }, "Spacing", "", &particleSpacing, 0, 100 * uiScale);
+        _ = rg.GuiSliderBar(.{ .x = xCol, .y = 50 + (uiHeight * 3), .width = uiWidth, .height = uiHeight }, "Size", "", &particleSize, 1, 350 * uiScale);
+        _ = rg.GuiSliderBar(.{ .x = xCol, .y = 60 + (uiHeight * 4), .width = uiWidth, .height = uiHeight }, "Quantity", "", &numParticles, 1, 1000);
         _ = rg.GuiSliderBar(.{ .x = xCol, .y = 70 + (uiHeight * 5), .width = uiWidth, .height = uiHeight }, "Collision Dampening", "", &collisionDampener, 0, 1);
-        _ = rg.GuiCheckBox(.{ .x = xCol, .y = 80 + (uiHeight * 6), .width = uiBoxSize, .height = uiBoxSize }, "Pause", &run);
+        _ = rg.GuiCheckBox(.{ .x = xCol, .y = 80 + (uiHeight * 6), .width = uiBoxSize, .height = uiBoxSize }, "Run", &run);
         _ = rg.GuiCheckBox(.{ .x = xCol, .y = 80 + (uiHeight * 7), .width = uiBoxSize, .height = uiBoxSize }, "Reset", &reset);
         const msg = "Hello zig! You created your first window.";
-        rl.DrawText(msg, @as(i32, @intFromFloat(screenWidth)) - @as(i32, 5 * msg.len), @as(i32, @intFromFloat(screenHeight)) - 20, 20, rl.BLACK);
+        rl.DrawText(msg, @as(i32, @intFromFloat(screenWidth)) - @as(i32, 5 * msg.len), @as(i32, @intFromFloat(screenHeight)) - 200, 20, rl.BLACK);
         if (rl.IsKeyDown(.KEY_Q)) {
             break;
         }
