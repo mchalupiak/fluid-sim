@@ -1,0 +1,6 @@
+[submodule "raygui.zig"]
+	path = raygui.zig
+	url = ./raygui.zig/
+[submodule "raylib.zig"]
+	path = raylib.zig
+	url = ./raylib.zig/
